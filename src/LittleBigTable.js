@@ -109,9 +109,13 @@ function littleBIGtable(settings) {
                 str+= '&'+this.settings.args.search+'='+this.params.search;
             }
 
-            let sort = null;
+            let sort = '';
             for (i in this.sort) {
-                sort = i + ':' + this.sort[i];
+                if (sort != '')
+                {
+                    sort += ',';
+                }
+                sort += i + ':' + this.sort[i];
             }
             if (sort) {
                 str+= '&'+this.settings.args.sort+'='+sort;
