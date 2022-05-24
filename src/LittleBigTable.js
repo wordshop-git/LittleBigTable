@@ -161,7 +161,7 @@ function littleBIGtable(settings) {
         getOffsetForPage: function() {
             // determine correct offset boundary for the current page
             // loop through pages, if (offset between prev and next) recalculate
-            if (this.params.total < this.params.limit) {
+            if (this.params.total < this.params.limit || this.getCurrentPage() == 1) {
               return 0;
             }
             for (i=0; i<parseInt(this.params.total); i+=parseInt(this.params.limit)) {
