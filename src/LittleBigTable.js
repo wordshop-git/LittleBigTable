@@ -10,7 +10,9 @@ function littleBIGtable(settings) {
               limit: 'limit',
               offset: 'offset',
               search: 'search',
-              sort: 'sort'
+                sort: 'sort',
+                direction: 'direction',
+                paginationKey: 'paginationKey'
             },
             messages: {
                 loading: 'Loading...',
@@ -35,6 +37,9 @@ function littleBIGtable(settings) {
             offset: 0,
             search: null,
             total: 0,
+            firstId: null,
+            lastId: null,
+            direction: null
         },
         // stores the table rows
         rows: [],
@@ -73,6 +78,8 @@ function littleBIGtable(settings) {
                 for (i in json.data){
                     this.addRow(json.data[i]);
                 }
+                this.params.firstId = json.firstId;
+                this.params.lastId = json.lastId;
             }).then(() => {
                 this.meta.loading = false;
                 this.setStatus(this.getSummary(this.settings.messages.summary));
@@ -121,6 +128,15 @@ function littleBIGtable(settings) {
                 str+= '&'+this.settings.args.sort+'='+sort;
             }
 
+            if (this.params.direction == 'backward')
+            {
+                str += '&' + this.settings.args.direction + '=backward&' + this.settings.args.paginationKey + '=' + this.params.firstId;
+            }
+            else if (this.params.direction == 'forward')
+            {
+                str += '&' + this.settings.args.direction + '=forward&' + this.settings.args.paginationKey + '=' + this.params.lastId;                
+            }
+
             return str;
         },
         // returns the current page number
@@ -138,10 +154,6 @@ function littleBIGtable(settings) {
         getTotalRows: function() {
             return parseInt(this.params.total);
         },
-        // returns the offset of the first row
-        getFirstPageOffset: function() {
-            return 0;
-        },
         // returns the offset of the first row on the previous page
         getPrevPageOffset: function() {
             let int = parseInt(parseInt(this.getCurrentPage() - 2) * parseInt(this.params.limit));
@@ -151,11 +163,6 @@ function littleBIGtable(settings) {
         getNextPageOffset: function() {
             let int = parseInt(parseInt(this.getCurrentPage()) * parseInt(this.params.limit));
             return int;
-        },
-        // returns the offset of the first row on the last page
-        getLastPageOffset: function() {
-            let int = parseInt(parseInt(this.getTotalPages() - 1) * parseInt(this.params.limit));
-            return (int < 0)  ? 0 : int;
         },
         // returns the offset for a particular page, (this may be slightly off depending on the limit chosen)
         getOffsetForPage: function() {
@@ -208,10 +215,8 @@ function littleBIGtable(settings) {
             if (this.params.limit < 10 || this.params.limit > 100) {
                 this.params.limit = 10;
             }
-            // reset offset and fetch
-            // determine current position, if greater than last page, go to last page
-            // get currentpageoffset
-            this.params.offset = this.getOffsetForPage();
+            // reset paging and fetch 
+            this.resetPaging();
             // store preference
             localStorage.setItem(this.settings.key_prefix + '.limit', this.params.limit);
             this.fetch();
@@ -230,32 +235,27 @@ function littleBIGtable(settings) {
                 delete this.sort[col];
             }
         },
-        // sets the offset to the first page and fetches the data
-        goFirstPage: function() {
-            this.params.offset = this.getFirstPageOffset();
-            this.fetch();
-        },
-        // sets the offset to the top of the last page and fetches the data
-        goLastPage: function() {
-            this.params.offset = this.getLastPageOffset();
-            this.fetch();
+        // reset to page 1 - used when we change sort order or items per page
+        // because with keyset pagination we cannot keep our place when these changes happen
+        resetPaging() {
+            this.params.offset = 0;
+            this.params.direction = null;
         },
         // sets the offset to the top of the next page and fetches the data
         goNextPage: function() {
             this.params.offset = this.getNextPageOffset();
+            this.params.direction = 'forward';
             this.fetch();
         },
         // sets the offset to the top of the previous page and fetches the data
         goPrevPage: function() {
             this.params.offset = this.getPrevPageOffset();
+            this.params.direction = 'backward';
             this.fetch();
-        },
-        // todo jump to a particular page by number
-        goToPage: function() {
         },
         // handle the user search input, always returning to the start of the results 
         doSearch: function() {
-            this.params.offset = 0;
+            this.resetPaging();
             this.fetch();
         },
         // handle the column sort
@@ -266,6 +266,7 @@ function littleBIGtable(settings) {
                 this.sort[col] = state;
             }
             this.toggleSortColumn(col);
+            this.resetPaging();
             this.fetch();
         },
         debug: function() {
